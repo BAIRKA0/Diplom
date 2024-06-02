@@ -9,7 +9,7 @@ data class SotrudnikiInDocument(
     @PrimaryKey(autoGenerate = true)
     var id: Int? = null,
     @ColumnInfo(name = "id_sotrudnik")
-    var id_sotrudnik: Int,
+    var id_sotrudnik: String,
     @ColumnInfo(name = "id_doc")
     var id_doc: Int,
     @ColumnInfo(name = "id_venue_in_doc")

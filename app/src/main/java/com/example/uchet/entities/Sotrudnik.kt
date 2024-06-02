@@ -10,8 +10,9 @@ import androidx.room.PrimaryKey
     indices = [Index(value = ["uid"], unique = true)]
 )
 data class Sotrudnik(
-    @PrimaryKey(autoGenerate = true)
-    var id: Int? = null,
+    @PrimaryKey
+    @ColumnInfo(name = "id")
+    var id: String,
     @ColumnInfo(name = "name")
     var name: String,
     @ColumnInfo(name = "surname")

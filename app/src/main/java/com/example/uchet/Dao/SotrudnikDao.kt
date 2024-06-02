@@ -14,6 +14,9 @@ interface SotrudnikDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(sotrudnik: Sotrudnik)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAll(employees: List<Sotrudnik>)
+
     @Query("SELECT * FROM sotrudniki")
     fun getAll(): Flow<List<Sotrudnik>>
 
@@ -31,4 +34,7 @@ interface SotrudnikDao {
 
     @Query("SELECT COUNT(*) FROM sotrudniki")
     suspend fun getRowCount(): Int
+
+    @Query("SELECT id FROM sotrudniki ORDER BY RANDOM() LIMIT :i")
+    suspend fun getIds(i: Int): List<String>
 }

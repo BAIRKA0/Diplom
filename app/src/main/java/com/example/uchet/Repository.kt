@@ -50,6 +50,12 @@ class Repository(
         return sotrudnikDao.getByUID(uid)
     }
 
+    suspend fun getIds(i: Int): List<String>{
+        return sotrudnikDao.getIds(i)
+    }
+
+    suspend fun insertSotrudniks(sotrudnik: List<Sotrudnik>) = sotrudnikDao.insertAll(sotrudnik)
+
     //Sotrudnik in document
     fun readAllSotrInDoc(id:Int) = sotrInDocDao.getById(id)
     suspend fun insertSotrInDoc(sotrudnikiInDocument: SotrudnikiInDocument) {

@@ -2,7 +2,7 @@ package com.example.uchet.entities
 
 data class SotrudnikiWithDocFields(
     var id: Int?,
-    var id_sotrudnik: Int,
+    var id_sotrudnik: String,
     var id_doc: Int,
     var id_venue_in_doc: Int,
     var id_venue_fact: Int,

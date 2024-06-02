@@ -18,6 +18,9 @@ interface DocumentDao {
     @Query("SELECT * FROM documents")
     fun getAll(): Flow<List<Document>>
 
+//    @Query("SELECT * FROM documents where ")
+//    fun getByDate(): Flow<List<Document>>
+
     @Query("SELECT * FROM documents where id = :id")
     suspend fun get(id: Int): Document?
 

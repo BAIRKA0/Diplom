@@ -70,7 +70,6 @@ fun MainScreen(
     val mainViewModel = viewModel(modelClass = MainViewModel::class.java)
     mainViewModel.getDateList()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
-    val coroutineScope = rememberCoroutineScope()
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -93,14 +92,14 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(20.dp)
         ) {
-            Header(mainViewModel,drawerState, coroutineScope, context)
+            Header(mainViewModel,drawerState, context)
             Table(context, mainViewModel)
         }
     }
 }
 
 @Composable
-fun Header(mainViewModel: MainViewModel, drawerState: DrawerState, coroutineScope: CoroutineScope, context: Context) {
+fun Header(mainViewModel: MainViewModel, drawerState: DrawerState, context: Context) {
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier
@@ -109,7 +108,7 @@ fun Header(mainViewModel: MainViewModel, drawerState: DrawerState, coroutineScop
             .background(color = Color.LightGray),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Burger(drawerState, coroutineScope)
+        Burger(drawerState)
         Filters(mainViewModel)
         Datetime()
         RFID("main", context)
@@ -117,12 +116,13 @@ fun Header(mainViewModel: MainViewModel, drawerState: DrawerState, coroutineScop
 }
 
 @Composable
-fun Burger(drawerState: DrawerState, coroutineScope: CoroutineScope) {
+fun Burger(drawerState: DrawerState) {
     val imageLoader = ImageLoader.Builder(LocalContext.current)
         .components {
             add(SvgDecoder.Factory())
         }
         .build()
+    val coroutineScope = rememberCoroutineScope()
     Image(
         painter = rememberAsyncImagePainter(R.raw.burger, imageLoader),
         contentDescription = null,

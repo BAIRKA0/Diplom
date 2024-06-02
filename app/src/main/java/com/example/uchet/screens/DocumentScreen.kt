@@ -48,9 +48,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uchet.activity.AuthActivity
 import com.example.uchet.activity.MainActivity
 import com.example.uchet.activity.SettingActivity
-import com.example.uchet.entities.SotrudnikiInDocument
 import com.example.uchet.viewModels.DocViewModel
-import kotlinx.coroutines.CoroutineScope
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -62,7 +60,6 @@ fun DocumentScreen(
     val docViewModel = viewModel(modelClass = DocViewModel::class.java)
     docViewModel.getDocState(docId)
     val drawerState = rememberDrawerState(DrawerValue.Closed)
-    val coroutineScope = rememberCoroutineScope()
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -87,14 +84,14 @@ fun DocumentScreen(
                 .fillMaxSize()
                 .padding(20.dp)
         ) {
-            DocumentHeader(context, docViewModel,drawerState, coroutineScope)
+            DocumentHeader(context, docViewModel,drawerState)
             Table2(docViewModel, context)
         }
     }
 }
 
 @Composable
-fun DocumentHeader(context: Context, docViewModel: DocViewModel, drawerState: DrawerState, coroutineScope: CoroutineScope){
+fun DocumentHeader(context: Context, docViewModel: DocViewModel, drawerState: DrawerState){
     Row (
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier
@@ -103,21 +100,21 @@ fun DocumentHeader(context: Context, docViewModel: DocViewModel, drawerState: Dr
             .background(color = Color.LightGray),
         verticalAlignment = Alignment.CenterVertically
     ){
-        Burger(drawerState, coroutineScope)
+        Burger(drawerState)
         DocInfo(docViewModel)
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Button(onClick = {
-                docViewModel.addSotr(SotrudnikiInDocument(
-                    id_sotrudnik = java.util.Random().nextInt(10)+1,
-                    id_venue_fact = docViewModel.docState2.selectedVenueId ?: 1,
-                    id_venue_in_doc = java.util.Random().nextInt(10)+1,
-                    id_doc = docViewModel.docState2.id!!,
-                    route = "",
-                    mark = 1,
-                    available_in_doc = 0
-                ))
+//                docViewModel.addSotr(SotrudnikiInDocument(
+//                    id_sotrudnik = java.util.Random().nextInt(10)+1,
+//                    id_venue_fact = docViewModel.docState2.selectedVenueId ?: 1,
+//                    id_venue_in_doc = java.util.Random().nextInt(10)+1,
+//                    id_doc = docViewModel.docState2.id!!,
+//                    route = "",
+//                    mark = 1,
+//                    available_in_doc = 0
+//                ))
             }) {
                 Text(text = "Добавить вручную",modifier = Modifier.padding(bottom = 4.dp))
             }
@@ -308,7 +305,7 @@ fun SotrInfo(docViewModel: DocViewModel){
                         .fillMaxWidth()
                 ) {
                     Button(
-                        onClick = { docViewModel.changeMark(true,infoState.sotrudnik.id!!, if(docViewModel.docState2.selectedVenueId!=null){docViewModel.docState2.selectedVenueId!!}else{0}) },
+                        onClick = { docViewModel.changeMark(true,infoState.sotrudnik.id.toInt(), if(docViewModel.docState2.selectedVenueId!=null){docViewModel.docState2.selectedVenueId!!}else{0}) },
                         modifier = Modifier
                             .weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Green)
@@ -318,7 +315,7 @@ fun SotrInfo(docViewModel: DocViewModel){
                     Button(
                         onClick = {
                             docViewModel.clearInfo()
-                            docViewModel.changeMark(false,infoState.sotrudnik.id!!,0)
+                            docViewModel.changeMark(false,infoState.sotrudnik.id.toInt(),0)
 //                            coroutineScope.launch {
 //                                if(docViewModel.getSotrInDoc(infoState.sotrudnik.uid!!)>0)
 //
