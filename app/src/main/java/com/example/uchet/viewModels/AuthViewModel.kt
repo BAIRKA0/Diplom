@@ -10,6 +10,16 @@ import kotlinx.coroutines.launch
 class AuthViewModel(
     private val repository: Repository = Graph.repository
 ) :ViewModel() {
+
+    val value = repository.cardValue
+    val page = repository.page
+    fun changeValue(s:String){
+        repository.changeCardValue(s)
+    }
+    fun changePage(s: String){
+        repository.changePage(s)
+    }
+
     init {
         viewModelScope.launch {
             if(repository.getAccRow()==0){

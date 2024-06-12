@@ -22,8 +22,7 @@ class MainViewModel(
         try {
             getAllDocWithFields()
         } catch (e: Exception) {
-            // Логирование ошибки
-            Log.e("MainViewModel", "Error in init block", e)
+            Log.e("GetAllDoc", "Error", e)
         }
     }
     var docState by mutableStateOf(DocState())

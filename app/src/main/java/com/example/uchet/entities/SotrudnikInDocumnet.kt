@@ -21,5 +21,5 @@ data class SotrudnikiInDocument(
     @ColumnInfo(name = "mark")
     var mark: Int,
     @ColumnInfo(name = "available_in_doc")
-    var available_in_doc: Int,
+    var available_in_doc: Int
 )

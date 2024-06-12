@@ -3,11 +3,9 @@ package com.example.uchet.activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.lifecycle.lifecycleScope
 import com.example.uchet.AdminPasswordManager
 import com.example.uchet.screens.MainScreen
 import com.example.uchet.ui.theme.UchetTheme
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -21,13 +19,13 @@ class MainActivity : ComponentActivity() {
             }
         }
         adminPasswordManager = AdminPasswordManager(applicationContext)
-        lifecycleScope.launch {
-            adminPasswordManager.saveAdminPassword("123")
-        }
-        lifecycleScope.launch {
-            adminPasswordManager.adminPassword.collect { password ->
-                println("Admin Password: $password")
-            }
-        }
+//        lifecycleScope.launch {
+//            adminPasswordManager.saveAdminPassword("123")
+//        }
+//        lifecycleScope.launch {
+//            adminPasswordManager.adminPassword.collect { password ->
+//                println("Admin Password: $password")
+//            }
+//        }
     }
 }

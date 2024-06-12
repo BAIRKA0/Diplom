@@ -2,6 +2,7 @@ package com.example.uchet.screens
 
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uchet.activity.MainActivity
 import com.example.uchet.viewModels.AuthViewModel
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 @Composable
@@ -46,6 +48,7 @@ fun AuthorizationScreen(
     context: Context
 ) {
     val authViewModel = viewModel(modelClass = AuthViewModel::class.java)
+
     Column {
         Row(
             horizontalArrangement = Arrangement.End,
@@ -58,6 +61,17 @@ fun AuthorizationScreen(
             RFID("auth",context)
         }
         AuthorizationMenu(authViewModel,context)
+    }
+    val coroutineScope = rememberCoroutineScope()
+    authViewModel.changePage("auth")
+    coroutineScope.launch {
+        authViewModel.value.collectLatest {
+            if(authViewModel.value.value == "1482513293" && authViewModel.page.value == "auth"){
+                Log.d("page",authViewModel.page.value)
+                authViewModel.changeValue("")
+                context.startActivity(Intent(context, MainActivity::class.java))
+            }
+        }
     }
 }
 
@@ -150,7 +164,7 @@ fun AuthorizationMenu(authViewModel: AuthViewModel, context: Context){
                     }
                 }
             )
-            Button(
+            CustomButton(
                 onClick = {
                     coroutineScope.launch {
                             if(authViewModel.auth(username, password)){
@@ -164,10 +178,9 @@ fun AuthorizationMenu(authViewModel: AuthViewModel, context: Context){
                       },
                 modifier = Modifier
                     .padding(horizontal = 16.dp, vertical = 16.dp)
-                    .fillMaxWidth(0.5f)
-            ) {
-                Text("Войти")
-            }
+                    .fillMaxWidth(0.5f),
+                title = "Войти"
+            )
         }
     }
 }

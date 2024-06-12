@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -21,13 +22,22 @@ import kotlinx.coroutines.launch
 import org.apache.poi.ss.usermodel.Cell
 import org.apache.poi.ss.usermodel.Row
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
+import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
+import java.util.Locale
 
 class DocViewModel(
     private val repository: Repository = Graph.repository
 ): ViewModel() {
-
+    val value = repository.cardValue
+    val page = repository.page
+    fun changeValue(s:String){
+        repository.changeCardValue(s)
+    }
+    fun changePage(s: String){
+        repository.changePage(s)
+    }
     var sotrudnikiState by mutableStateOf(SotrudnikiState())
         private set
     var sotrudnikiViewState by mutableStateOf(sotrudnikiState)
@@ -38,6 +48,36 @@ class DocViewModel(
         private set
     var sotrList by mutableStateOf(SotrList())
         private set
+    var searchList by mutableStateOf(SotrList())
+        private set
+
+    fun getAllSotr(){
+        viewModelScope.launch {
+            repository.readAllSotrudnik.collect { sotr ->
+                sotrList = sotrList.copy(
+                    sotrList = sotr
+                )
+            }
+        }
+    }
+    fun searchSotr(text: String){
+        if(text!=null && text!="") {
+            searchList = searchList.copy(
+                sotrList = sotrList.sotrList.filter { employee ->
+                    employee.name.startsWith(text, ignoreCase = true) ||
+                            employee.surname.startsWith(text, ignoreCase = true) ||
+                            employee.patronymic.startsWith(text, ignoreCase = true)
+                },
+                search = text
+            )
+        }else{
+            searchList = searchList.copy(
+                sotrList = sotrList.sotrList,
+//                search = text
+            )
+        }
+    }
+
     fun getDocState(id: Int){
         viewModelScope.launch {
             val doc = repository.getDocById(id)
@@ -67,7 +107,7 @@ class DocViewModel(
 
     private fun getSotrudniki(docState2: DocState2){
         viewModelScope.launch{
-            repository.readAllSotrInDoc(docState2.id!!).collectLatest { sotrudniki ->
+            repository.readTest(docState2.id!!).collectLatest { sotrudniki ->
                 var sotrudnikiWithDocFields :List<SotrudnikiWithDocFields> = emptyList()
                 if(sotrudniki.isNotEmpty()) {
                     sotrudnikiWithDocFields = sotrudniki.map { sotrudnik ->
@@ -86,22 +126,56 @@ class DocViewModel(
                             uid = sotrudnik.uid
                         )
                     }
-                }
+                }else Log.d("s2", "empty")
                 sotrudnikiState = sotrudnikiState.copy(
                     sotrudniki = sotrudnikiWithDocFields
                 )
                 sotrudnikiViewState = sotrudnikiViewState.copy(
                     sotrudniki = sotrudnikiState.sotrudniki
                 )
+                sort()
             }
         }
+
     }
 
-    fun changeMark(mark: Boolean, id: Int, id_venue: Int){
+    fun changeMark(mark: Boolean, id: String, id_venue: Int){
         viewModelScope.launch {
-            repository.changeMark(mark, id)
-            repository.updateVenue(id,id_venue)
+            if(sotrudnikiViewState.sotrudniki.any{ it.id_sotrudnik == id && it.available_in_doc}) {
+                repository.changeMark(mark, id)
+                repository.updateVenue(id, id_venue)
+            }else{
+                if(mark) {
+                    val sotrudnik = repository.getByID(id)
+                    if(sotrudnik!=null) {
+                        repository.insertSotrInDoc(
+                            SotrudnikiInDocument(
+                                id_sotrudnik = sotrudnik.id,
+                                id_doc = docState2.id!!,
+                                id_venue_in_doc = 0,
+                                id_venue_fact = id_venue,
+                                route = "Рейс ",
+                                mark = 1,
+                                available_in_doc = 0
+                            )
+                        )
+                    }
+                }else{
+                    repository.deleteSotrInDoc(id)
+                }
+            }
         }
+        sort()
+    }
+
+    fun sort(){
+        sotrudnikiViewState = sotrudnikiViewState.copy(
+            sotrudniki = sotrudnikiViewState.sotrudniki.sortedWith(
+                compareBy<SotrudnikiWithDocFields> { !it.available_in_doc }
+                    .thenBy{ it.mark }
+                    .thenBy{ it.surname }
+            )
+        )
     }
 
     fun getInfo(uid:Long){
@@ -178,18 +252,33 @@ class DocViewModel(
             employee.mark==true
         }
         val workBook = XSSFWorkbook()
-        val filename = "По распределению от <дата>"
         val sheet = workBook.createSheet("Посаженные сотрудники")
-        val headers = arrayOf(
-             "Имя", "Фамилия", "Отчество", "uid", "company", "id_venue_fact", "route"
+        val info = arrayOf(
+            "Пункт назначения", "Дата выезда","Транспорт"
         )
-        val headerRow: Row = sheet.createRow(0)
-        for ((index, header) in headers.withIndex()) {
+        val infoRow: Row = sheet.createRow(0)
+        for ((index, i) in info.withIndex()) {
+            val cell: Cell = infoRow.createCell(index)
+            cell.setCellValue(i)
+        }
+        val value = arrayOf(
+            docState2.destination[0].name, SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(docState2.departure_date),docState2.transport[0].name
+        )
+        val valueRow: Row = sheet.createRow(1)
+        for ((index, i) in value.withIndex()) {
+            val cell: Cell = valueRow.createCell(index)
+            cell.setCellValue(i)
+        }
+        val headers = arrayOf(
+             "Имя", "Фамилия", "Отчество", "Номер пропуска", "Компания", "Пункт выезда", "Рейс"
+        )
+        val headerRow: Row = sheet.createRow(2)
+        for ((index, i) in headers.withIndex()) {
             val cell: Cell = headerRow.createCell(index)
-            cell.setCellValue(header)
+            cell.setCellValue(i)
         }
         for ((rowIndex, sotrudnik) in sotrudnikiList.withIndex()) {
-            val row: Row = sheet.createRow(rowIndex + 1)
+            val row: Row = sheet.createRow(rowIndex + 3)
             row.createCell(0).setCellValue(sotrudnik.name)
             row.createCell(1).setCellValue(sotrudnik.surname)
             row.createCell(2).setCellValue(sotrudnik.patronymic)
@@ -198,7 +287,7 @@ class DocViewModel(
             row.createCell(5).setCellValue(sotrudnik.route)
         }
         val values = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, "example.xlsx")
+            put(MediaStore.MediaColumns.DISPLAY_NAME, "Отчет за " + SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(docState2.departure_date))
             put(MediaStore.MediaColumns.MIME_TYPE, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
         }
@@ -212,13 +301,31 @@ class DocViewModel(
     }
 }
 
+data class SotrInDoc(
+    var id: Int?,
+    var id_sotrudnik: String,
+    var id_doc: Int,
+    var id_venue_in_doc: Int,
+    var id_venue_fact: Int,
+    var venue_in_doc: String,
+    var venue_fact: String,
+    var route: String,
+    var mark: Boolean,
+    var available_in_doc: Boolean,
+    var name: String,
+    var surname: String,
+    var patronymic: String,
+    var uid: Long,
+)
+
 data class DocState2(
     val id:Int?=null,
     val departure_date:Date?=null,
     val transport:List<Transport> = emptyList(),
     val venues: List<Departure> = emptyList(),
     val selectedVenueId: Int? = null,
-    val destination: List<Departure> = emptyList()
+    val destination: List<Departure> = emptyList(),
+    //val name: String
 )
 
 data class InfoState(

@@ -12,5 +12,5 @@ data class SotrudnikiWithDocFields(
     var name: String,
     var surname: String,
     var patronymic: String,
-    var uid: Long,
+    var uid: Long
 )

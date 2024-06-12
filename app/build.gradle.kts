@@ -89,7 +89,7 @@ dependencies {
     kapt("com.google.dagger:hilt-android-compiler:2.48")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("androidx.datastore:datastore-preferences-core:1.1.1")
-    implementation("io.github.aakira:napier:2.6.1")
+    implementation("io.github.aakira:napier:2.7.1")
     implementation("io.ktor:ktor-client-content-negotiation:2.3.10")
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.10")
     implementation("io.ktor:ktor-client-okhttp:2.3.10")
@@ -104,4 +104,12 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("androidx.datastore:datastore:1.1.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation("androidx.activity:activity-compose:1.9.0")
+    implementation("androidx.compose.ui:ui-tooling-preview:1.6.7")
+    implementation("com.google.android.material:material:1.12.0")
+
+    implementation("io.github.vanpra.compose-material-dialogs:datetime:0.9.0")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    implementation("no.nordicsemi.android:ble:2.4.1")
+    implementation("androidx.compose.runtime:runtime-livedata:1.6.7")
 }

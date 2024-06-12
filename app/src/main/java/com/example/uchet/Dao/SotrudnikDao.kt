@@ -23,6 +23,9 @@ interface SotrudnikDao {
     @Query("SELECT * FROM sotrudniki where uid = :uid")
     suspend fun getByUID(uid: Long): Sotrudnik?
 
+    @Query("SELECT * FROM sotrudniki where id = :id")
+    suspend fun getByID(id: String): Sotrudnik?
+
     @Update
     suspend fun update(sotrudnik: Sotrudnik)
 

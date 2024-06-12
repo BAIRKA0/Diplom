@@ -31,11 +31,14 @@ interface SotrInDocDao {
             " WHERE sotrudniki_in_document.id_doc = :id_doc")
     fun getById(id_doc: Int): Flow<List<SotrudnikiWithDocFields>>
 
+    @Query("SELECT * FROM sotrudniki_in_document INNER JOIN sotrudniki ON sotrudniki_in_document.id_sotrudnik = sotrudniki.id WHERE sotrudniki_in_document.id_doc = :id_doc")
+    fun getAllSotrInDoc(id_doc: Int): Flow<List<SotrudnikiWithDocFields>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(sotrudnikiInDocument: SotrudnikiInDocument)
 
     @Query("UPDATE sotrudniki_in_document SET mark=:mark WHERE id_sotrudnik=:id")
-    suspend fun changeMark(mark: Boolean,id: Int)
+    suspend fun changeMark(mark: Boolean,id: String)
 
     @Query("SELECT * FROM sotrudniki_in_document")
     fun getAll(): List<SotrudnikiInDocument>
@@ -49,8 +52,11 @@ interface SotrInDocDao {
     @Query("DELETE FROM sotrudniki_in_document WHERE available_in_doc=0 AND id_doc= :id")
     suspend fun deleteById(id: Int)
 
+    @Query("DELETE FROM sotrudniki_in_document WHERE id_sotrudnik = :id")
+    suspend fun deleteSotrInDoc(id: String)
+
     @Query("UPDATE sotrudniki_in_document SET id_venue_fact=:id_venue WHERE id_sotrudnik=:id")
-    suspend fun updateVenue(id: Int,id_venue: Int)
+    suspend fun updateVenue(id: String,id_venue: Int)
 
     @Query("SELECT COUNT(*) FROM sotrudniki_in_document WHERE id_sotrudnik=:id")
     suspend fun getByUid(id: Long): Int

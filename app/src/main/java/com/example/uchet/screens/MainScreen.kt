@@ -1,7 +1,10 @@
 package com.example.uchet.screens
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.util.Log
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,21 +18,21 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,9 +42,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,15 +54,24 @@ import coil.decode.SvgDecoder
 import com.example.uchet.R
 import com.example.uchet.activity.AuthActivity
 import com.example.uchet.activity.DocumentActivity
-import com.example.uchet.activity.MainActivity
 import com.example.uchet.activity.SettingActivity
+import com.example.uchet.entities.RFIDStates
 import com.example.uchet.viewModels.MainViewModel
+import com.example.uchet.viewModels.RfidViewModel
+import com.example.uchet.viewModels.reportViewModel
+import com.vanpra.composematerialdialogs.MaterialDialog
+import com.vanpra.composematerialdialogs.datetime.date.datepicker
+import com.vanpra.composematerialdialogs.rememberMaterialDialogState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Date
 import java.util.Locale
 
 @Composable
@@ -68,9 +79,10 @@ fun MainScreen(
     context: Context
 ) {
     val mainViewModel = viewModel(modelClass = MainViewModel::class.java)
+    val reposrtViewModel = viewModel(modelClass = reportViewModel::class.java)
     mainViewModel.getDateList()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
-
+    var showDialog by remember { mutableStateOf(false) }
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -79,7 +91,7 @@ fun MainScreen(
                     context.startActivity(Intent(context, SettingActivity::class.java))
                 },
                 "Отчетность" to {
-
+                    showDialog = true
                 },
                 "Выход" to {
                     context.startActivity(Intent(context, AuthActivity::class.java))
@@ -96,8 +108,30 @@ fun MainScreen(
             Table(context, mainViewModel)
         }
     }
-}
+    if (showDialog) {
+        val startDate = remember { mutableStateOf(LocalDate.now()) }
+        val endDate = remember { mutableStateOf(LocalDate.now()) }
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text(text = "Выберите период") },
+            text = {
+                DatePeriodPickers(startDate,endDate)
+            },
+            confirmButton = {
 
+                CustomButton(title = "Сформировать", onClick = {
+                    reposrtViewModel.saveByDate(
+                        startDate.value.toDate(),
+                        endDate.value.toDate(),
+                        context
+                    ) })
+            },
+            dismissButton = {
+                CustomButton(title = "Отмена", onClick = { showDialog = false })
+            }
+        )
+    }
+}
 @Composable
 fun Header(mainViewModel: MainViewModel, drawerState: DrawerState, context: Context) {
     Row(
@@ -114,7 +148,6 @@ fun Header(mainViewModel: MainViewModel, drawerState: DrawerState, context: Cont
         RFID("main", context)
     }
 }
-
 @Composable
 fun Burger(drawerState: DrawerState) {
     val imageLoader = ImageLoader.Builder(LocalContext.current)
@@ -135,7 +168,6 @@ fun Burger(drawerState: DrawerState) {
             }
     )
 }
-
 @Composable
 fun Filters(mainViewModel: MainViewModel) {
     Column(
@@ -145,24 +177,20 @@ fun Filters(mainViewModel: MainViewModel) {
 
         ) {
             for (i in mainViewModel.dateState.dateList){
-                Button(onClick = {
+                CustomButton(onClick = {
                     mainViewModel.filterDocs(i)},
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if(mainViewModel.dateState.filteredDate==i){
-                             Color.Green
+                            Color(0xff81E95C)
                         }else{Color.Gray}),
-                    modifier = Modifier.padding(2.dp)
-                    ) {
-                    Text(
-                        text = i,
-                        color = Color.Black
+                    modifier = Modifier.padding(2.dp),
+                    title = i,
+                    fontSize = 18.sp
                     )
-                }
             }
         }
     }
 }
-
 @Composable
 fun Datetime() {
     var currentTime by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -184,7 +212,6 @@ fun Datetime() {
         Text(text = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(currentTime))
     }
 }
-
 @Composable
 fun Table(context: Context, mainViewModel: MainViewModel) {
     val docState = mainViewModel.docViewState
@@ -295,19 +322,17 @@ fun Table(context: Context, mainViewModel: MainViewModel) {
             modifier = Modifier.fillMaxWidth()
         )
         {
-            Button(
+            CustomButton(
                 onClick = {
                     val intent = Intent(context, DocumentActivity::class.java)
                     intent.putExtra("id", "0")
                     context.startActivity(intent)
-                }
-            ) {
-                Text(text = "Без документа распределения")
-            }
+                },
+                title="Без документа распределения"
+            )
         }
     }
 }
-
 @Composable
 fun Cell(text: String, modifier: Modifier = Modifier) {
     Box(
@@ -323,129 +348,120 @@ fun Cell(text: String, modifier: Modifier = Modifier) {
         )
     }
 }
-
+@SuppressLint("ResourceType")
 @Composable
 fun RFID(screen: String, context: Context) {
-    var showDialog by remember { mutableStateOf(false) }
-    var showDialog2 by remember { mutableStateOf(false) }
-    var inputText by remember { mutableStateOf("") }
-    val keyboardController = LocalSoftwareKeyboardController.current
-    val coroutineScope = rememberCoroutineScope()
-    val mainViewModel = viewModel(modelClass = MainViewModel::class.java)
+    val rfidViewModel = viewModel(modelClass = RfidViewModel::class.java)
+//    var rfidBleManager = RfidBleManager(context)
+
+    val rfidColor = mutableStateOf(Color(0xffFF3333))
+    Log.d("currentState", rfidViewModel.state.currentState.toString())
+
+    rfidColor.value = when (rfidViewModel.state.currentState) {
+        RFIDStates.RFID_CONNECTED -> Color(0xff81E95C)
+        RFIDStates.RFID_DISCONNECTED -> Color(0xffFF3333)
+        RFIDStates.RFID_PROCESSING -> Color(0xffE4B91E)
+    }
     Column(
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable {
-            showDialog = true
-        }
+        modifier = Modifier
+            .padding(10.dp),
+        verticalArrangement = Arrangement.Center
     ) {
-        val imageLoader = ImageLoader.Builder(LocalContext.current)
-            .components {
-                add(SvgDecoder.Factory())
-            }
-            .build()
-        Image(
-            painter = rememberAsyncImagePainter(R.raw.rfid, imageLoader),
-            contentDescription = null,
-            modifier = Modifier
-                .fillMaxHeight()
-                //.background(Color.White)
+        Icon(
+            painterResource(id = R.drawable.rfid),
+            "Индикация RFID",
+            Modifier.width(96.dp),
+            tint = rfidColor.value
         )
     }
-    if(screen=="auth" || screen == "doc") {
-        if (showDialog2) {
-            Alert(onConfirm = { showDialog2 = false }, text = "Пропуск не найден")
-        }
-        if (showDialog) {
-            AlertDialog(
-                onDismissRequest = { showDialog = false },
-                title = { Text(text = "Введите номер пропуска") },
-                text = {
-                    Column {
-                        BasicTextField(
-                            value = inputText,
-                            onValueChange = { inputText = it },
-                            keyboardOptions = KeyboardOptions.Default.copy(
-                                keyboardType = KeyboardType.Number,
-                                imeAction = ImeAction.Done
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onDone = {
-                                    coroutineScope.launch {
-                                        if (screen == "auth") {
-                                            if (mainViewModel.getPass(inputText)) {
-                                                context.startActivity(
-                                                    Intent(
-                                                        context,
-                                                        MainActivity::class.java
-                                                    )
-                                                )
-                                            } else {
-                                                showDialog2 = true
-                                            }
-                                        } else {
-                                            if (screen == "doc") {
-                                                /////
-                                            } else {
-                                                /////
-                                            }
-                                        }
-                                    }
-                                }
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color.LightGray)
-                                .padding(8.dp)
-                        )
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            coroutineScope.launch {
-                                if (mainViewModel.getPass(inputText)) {
-                                    context.startActivity(
-                                        Intent(
-                                            context,
-                                            MainActivity::class.java
-                                        )
-                                    )
-                                    showDialog = false
-                                    inputText = ""
-                                    context.startActivity(Intent(context, MainActivity::class.java))
-                                } else {
-                                    showDialog2 = true
-                                }
-                            }
-                        }
-                    ) {
-                        Text("OK")
-                    }
-                },
-                dismissButton = {
-                    Button(
-                        onClick = {
-                            showDialog = false
-                            inputText = ""
-                        }
-                    ) {
-                        Text("Отмена")
-                    }
-                }
 
-            )
-            LaunchedEffect(Unit) {
-                keyboardController?.show()
+}
+@Composable
+fun DatePeriodPickers(startDate: MutableState<LocalDate>, endDate: MutableState<LocalDate>) {
+    Column {
+        Text(text = "Настройка отчетного периода")
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val dateFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy")
+
+            val startDateDialogState = rememberMaterialDialogState()
+            val endDateDialogState = rememberMaterialDialogState()
+
+            Box(
+                modifier = Modifier
+                    .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
+                    .height(56.dp)
+                    .padding(8.dp)
+                    .clickable {
+                        startDateDialogState.show()
+                    }
+            ) {
+                Text(modifier = Modifier
+                    .align(Alignment.Center),
+                    text = startDate.value.format(dateFormatter) ?: "Выберите",
+                    fontSize = 20.sp)
             }
-        }
-    }else{
-        if (showDialog) {
-            Alert(onConfirm = { showDialog = false }, text = "Сканер работает корректно")
+            Text(modifier = Modifier
+                .align(Alignment.CenterVertically),
+                text = "-",
+                fontSize = 24.sp)
+            Box(
+                modifier = Modifier
+                    .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
+                    .height(56.dp)
+                    .padding(8.dp)
+                    .clickable {
+                        endDateDialogState.show()
+                    }
+            ) {
+                Text(modifier = Modifier
+                    .align(Alignment.Center),
+                    text = endDate.value.format(dateFormatter) ?: "Выберите",
+                    fontSize = 20.sp)
+            }
+
+            MaterialDialog(
+                dialogState = startDateDialogState,
+                buttons = {
+                    positiveButton("Подтвердить")
+                    negativeButton("Отмена")
+                },
+                border = BorderStroke(1.dp, Color.Black)
+            ) {
+                datepicker(
+                    initialDate = startDate.value,
+                    title = "Выберите начальную дату",
+                    allowedDateValidator = {
+                        it <= endDate.value
+                    }
+                ) {
+                    startDate.value = it
+                }
+            }
+
+            MaterialDialog(
+                dialogState = endDateDialogState,
+                buttons = {
+                    positiveButton("Подтвердить")
+                    negativeButton("Отмена")
+                },
+                border = BorderStroke(1.dp, Color.Black)
+            ) {
+                datepicker(
+                    initialDate = endDate.value,
+                    title = "Выберите конечную дату",
+                    waitForPositiveButton = false,
+                    allowedDateValidator = {
+                        it >= startDate.value && it <= LocalDate.now()
+                    }
+                ) {
+                    endDate.value = it
+                }
+            }
         }
     }
 }
-
 @Composable
 fun DrawerContent(title: String, menuItems: List<Pair<String, () -> Unit>>) {
     Column(modifier = Modifier
@@ -455,19 +471,26 @@ fun DrawerContent(title: String, menuItems: List<Pair<String, () -> Unit>>) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(text = title,
-            fontSize = 20.sp,
+            fontSize = 24.sp,
             modifier = Modifier
-                .padding(top = 16.dp)
+                .padding(top = 16.dp),
+            textAlign = TextAlign.Center
             )
         menuItems.forEach { (title, action) ->
-            Button(
+            CustomButton(
                 onClick = action,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(title)
-            }
+                    .padding(16.dp),
+                title = title,
+                buttonType = ButtonTypes.Neutral,
+                fontSize = 18.sp
+            )
         }
     }
+}
+
+
+fun LocalDate.toDate(): Date {
+    return Date.from(this.atStartOfDay(ZoneId.systemDefault()).toInstant())
 }

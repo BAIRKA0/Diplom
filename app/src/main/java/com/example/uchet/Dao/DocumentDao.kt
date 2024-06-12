@@ -24,6 +24,9 @@ interface DocumentDao {
     @Query("SELECT * FROM documents where id = :id")
     suspend fun get(id: Int): Document?
 
+    @Query("SELECT * FROM documents where departure_date = :departureDate")
+    fun getDocsByDate(departureDate: Date): Flow<List<Document>>
+
     @Query("SELECT id FROM documents where distribution = :distribution AND departure_date = :departureDate AND transport = :transport AND venues = :venues")
     suspend fun getId(distribution: String, departureDate: Date, transport: String, venues: String): Int?
 

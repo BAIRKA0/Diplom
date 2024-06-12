@@ -2,6 +2,7 @@ package com.example.uchet.screens
 
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,7 +22,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DrawerState
@@ -44,12 +44,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uchet.activity.AuthActivity
 import com.example.uchet.activity.MainActivity
 import com.example.uchet.activity.SettingActivity
 import com.example.uchet.viewModels.DocViewModel
+import com.example.uchet.viewModels.reportViewModel
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.time.LocalDate
 import java.util.Locale
 
 @Composable
@@ -57,9 +62,14 @@ fun DocumentScreen(
     context: Context,
     docId: Int
 ) {
+    Log.d("docId",docId.toString())
     val docViewModel = viewModel(modelClass = DocViewModel::class.java)
+    val reposrtViewModel = viewModel(modelClass = reportViewModel::class.java)
     docViewModel.getDocState(docId)
+    docViewModel.getAllSotr()
+    //docViewModel.sort()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
+    var showDialog by remember { mutableStateOf(false) }
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -71,7 +81,7 @@ fun DocumentScreen(
                     context.startActivity(Intent(context, SettingActivity::class.java))
                 },
                 "Отчетность" to {
-
+                    showDialog = true
                 },
                 "Выход" to {
                     context.startActivity(Intent(context, AuthActivity::class.java))
@@ -88,41 +98,128 @@ fun DocumentScreen(
             Table2(docViewModel, context)
         }
     }
+    if (showDialog) {
+        val startDate = remember { mutableStateOf(LocalDate.now()) }
+        val endDate = remember { mutableStateOf(LocalDate.now()) }
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text(text = "Выберите период") },
+            text = {
+                DatePeriodPickers(startDate,endDate)
+            },
+            confirmButton = {
+                CustomButton(title = "Сформировать", onClick = { reposrtViewModel.saveByDate(
+                    startDate.value.toDate(),
+                    endDate.value.toDate(),
+                    context
+                ) })
+            },
+            dismissButton = {
+                CustomButton(title = "Отмена", onClick = { showDialog = false })
+            }
+        )
+    }
+    val coroutineScope = rememberCoroutineScope()
+    docViewModel.changePage("doc")
+    coroutineScope.launch {
+        docViewModel.value.collectLatest {
+            if(docViewModel.value.value == "1482513293" && docViewModel.page.value == "doc"){
+                docViewModel.getInfo(docViewModel.value.value.toLong())
+                docViewModel.changeValue("")
+            }
+        }
+    }
 }
 
 @Composable
-fun DocumentHeader(context: Context, docViewModel: DocViewModel, drawerState: DrawerState){
-    Row (
+fun DocumentHeader(context: Context, docViewModel: DocViewModel, drawerState: DrawerState) {
+    var showDialog by remember { mutableStateOf(false) }
+    Row(
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier
             .fillMaxWidth()
+            //.height(IntrinsicSize.Min)
             .fillMaxHeight(0.2f)
             .background(color = Color.LightGray),
         verticalAlignment = Alignment.CenterVertically
-    ){
+    ) {
         Burger(drawerState)
-        DocInfo(docViewModel)
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Button(onClick = {
-//                docViewModel.addSotr(SotrudnikiInDocument(
-//                    id_sotrudnik = java.util.Random().nextInt(10)+1,
-//                    id_venue_fact = docViewModel.docState2.selectedVenueId ?: 1,
-//                    id_venue_in_doc = java.util.Random().nextInt(10)+1,
-//                    id_doc = docViewModel.docState2.id!!,
-//                    route = "",
-//                    mark = 1,
-//                    available_in_doc = 0
-//                ))
-            }) {
-                Text(text = "Добавить вручную",modifier = Modifier.padding(bottom = 4.dp))
-            }
+            CustomButton(
+                onClick = {
+                    showDialog = true
+                },
+                title = "Добавить вручную",
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
             SearchField(docViewModel)
         }
+        DocInfo(docViewModel)
         SotrInfo(docViewModel)
-        RFID("doc",context)
+        RFID("doc", context)
     }
+    if (showDialog) {
+        AddSotrDialog(
+            onConfirm = { showDialog = false },
+            docViewModel = docViewModel
+        )
+    }
+}
+
+@Composable
+fun AddSotrDialog(
+    onConfirm: () -> Unit,
+    docViewModel: DocViewModel
+){
+    var fio by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = { },
+        title = {
+            Column(){
+                TextField(
+                    value = fio,
+                    onValueChange = { newText ->
+                        fio = newText
+                        docViewModel.searchSotr(newText)
+                    },
+                    label = { Text("ФИО") },
+                    modifier = Modifier
+                        .fillMaxWidth(1f)
+                        .padding(end = 6.dp)
+                )
+                LazyColumn(
+                    modifier = Modifier.height(120.dp)
+                ){
+                    items(docViewModel.searchList.sotrList){ sotrudnik ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth()
+                        ){
+                            Cell(
+                                text = sotrudnik.surname + " " +sotrudnik.name + " " + sotrudnik.patronymic + " №" + sotrudnik.uid,
+                                modifier = Modifier
+                                    .border(1.dp, Color.Black)
+                                    .fillMaxWidth()
+                                    .height(40.dp)
+                                    .clickable {
+                                        docViewModel.getInfo(sotrudnik.uid)
+                                    }
+                            )
+                        }
+                    }
+                }
+            }
+                },
+        confirmButton = {
+            CustomButton(
+                onClick = {
+                    onConfirm()
+                },
+                title = "Закрыть"
+            )
+        }
+    )
 }
 
 @Composable
@@ -170,7 +267,9 @@ fun DocInfo(docViewModel: DocViewModel){
                 DropdownMenu(
                     expanded = expanded,
                     onDismissRequest = { expanded = false },
-                    modifier = Modifier.width(160.dp).heightIn(max = 200.dp)
+                    modifier = Modifier
+                        .width(160.dp)
+                        .heightIn(max = 200.dp)
                 ) {
                     docViewModel.docState2.venues.forEach { label ->
                         DropdownMenuItem(
@@ -197,32 +296,43 @@ fun DocInfo(docViewModel: DocViewModel){
             }else{
                 Icons.Filled.KeyboardArrowDown
             }
-            Column{
-                Row( modifier = Modifier
-                    .border(1.dp, Color.Black)
-                    .width(200.dp)
-                    .padding(2.dp)
-                    .clickable { expanded = !expanded },
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ){
-                    Text(text = selectedItem)
-                    Icon(icon, "")
-                }
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                    modifier = Modifier.width(200.dp).heightIn(max = 200.dp)
-                ) {
-                    docViewModel.docState2.transport.forEach { label ->
-                        DropdownMenuItem(
-                            text  = { Text(text = label.name) },
-                            onClick = {
-                                selectedItem = label.name
-                                expanded= false
-                            })
+            if(docViewModel.docState2.id!=0) {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .border(1.dp, Color.Black)
+                            .width(200.dp)
+                            .padding(2.dp)
+                            .clickable { expanded = !expanded },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = selectedItem)
+                        Icon(icon, "")
+                    }
+
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier
+                            .width(200.dp)
+                            .heightIn(max = 200.dp)
+                    ) {
+                        docViewModel.docState2.transport.forEach { label ->
+                            DropdownMenuItem(
+                                text = { Text(text = label.name) },
+                                onClick = {
+                                    selectedItem = label.name
+                                    expanded = false
+                                })
+                        }
                     }
                 }
+            }else{
+                if(docViewModel.docState2.transport.isNotEmpty())
+                    Text(text = docViewModel.docState2.transport[0].name)
+                else
+                    Text(text = "Пусто")
             }
         }
         Row( verticalAlignment = Alignment.CenterVertically,
@@ -254,7 +364,9 @@ fun DocInfo(docViewModel: DocViewModel){
                     DropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
-                        modifier = Modifier.width(160.dp).heightIn(max = 200.dp)
+                        modifier = Modifier
+                            .width(160.dp)
+                            .heightIn(max = 200.dp)
                     ) {
                         docViewModel.docState2.venues.forEach { label ->
                             DropdownMenuItem(
@@ -280,7 +392,6 @@ fun DocInfo(docViewModel: DocViewModel){
 @Composable
 fun SotrInfo(docViewModel: DocViewModel){
     val infoState = docViewModel.infoState
-    val coroutineScope = rememberCoroutineScope()
     Column(
         modifier = Modifier
             .border(1.dp, Color.Black)
@@ -289,46 +400,49 @@ fun SotrInfo(docViewModel: DocViewModel){
             .padding(5.dp)
     ){
         if(infoState.uid!=null) {
-            Text(text = "Пропуск: №" + infoState.uid)
+            Text(text = "Пропуск: №" + infoState.uid,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 1)
             if (infoState.sotrudnik != null) {
                 val fio = "ФИО: " + infoState.sotrudnik.surname + " " + infoState.sotrudnik.name + " " + infoState.sotrudnik.patronymic
                 val org = "Организация: " + infoState.sotrudnik.company
-                val maxTextLength = 28
                 Text(text = fio,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth())
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 1)
                 Text(text = org,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth())
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 1)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                 ) {
-                    Button(
-                        onClick = { docViewModel.changeMark(true,infoState.sotrudnik.id.toInt(), if(docViewModel.docState2.selectedVenueId!=null){docViewModel.docState2.selectedVenueId!!}else{0}) },
-                        modifier = Modifier
-                            .weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Green)
-                    ) {
-                        Text(text = "Принять")
-                    }
-                    Button(
+                    CustomButton(
                         onClick = {
+                            docViewModel.changeMark(false,infoState.sotrudnik.id,0)
                             docViewModel.clearInfo()
-                            docViewModel.changeMark(false,infoState.sotrudnik.id.toInt(),0)
-//                            coroutineScope.launch {
-//                                if(docViewModel.getSotrInDoc(infoState.sotrudnik.uid!!)>0)
-//
-//                                else
-//                                    docViewModel.delete(infoState.sotrudnik.uid)
-//                            }
                                   },
                         modifier = Modifier
-                            .weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
-                    ) {
-                        Text(text = "Отклонить")
-                    }
+                            .weight(1f)
+                            .padding(2.dp),
+                        title = "отмена",
+                        buttonType = ButtonTypes.Negative,
+                        fontSize = 10.sp
+                    )
+                    CustomButton(
+                        onClick = {
+                            docViewModel.changeMark(true,infoState.sotrudnik.id, if(docViewModel.docState2.selectedVenueId!=null){docViewModel.docState2.selectedVenueId!!}else{0})
+                            docViewModel.clearInfo()
+                                  },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(2.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Green),
+                        title = "принять",
+                        fontSize = 10.sp
+                    )
                 }
             } else {
                 Text(text = "Сотрудник не найден")
@@ -405,7 +519,7 @@ fun Table2(docViewModel: DocViewModel,context: Context){
                         .border(1.dp, Color.Black)
                         .height(40.dp)
                         .background(
-                            if (!sotrudnik.mark||docViewModel.docState2.id==0) {
+                            if (!sotrudnik.mark || docViewModel.docState2.id == 0) {
                                 Color.White
                             } else {
                                 if (!sotrudnik.available_in_doc) {
@@ -432,8 +546,13 @@ fun Table2(docViewModel: DocViewModel,context: Context){
                                 docViewModel.getInfo(sotrudnik.uid)
                             }
                     )
+                    var venue = if(sotrudnik.id_venue_fact==0){
+                        sotrudnik.id_venue_in_doc.toString()
+                    }else{
+                        sotrudnik.id_venue_in_doc.toString() + " / " + sotrudnik.id_venue_fact.toString()
+                    }
                     Cell(
-                        text = sotrudnik.id_venue_fact.toString(), modifier = Modifier
+                        text = venue, modifier = Modifier
                             .weight(2f)
                             .border(1.dp, Color.Black)
                             .height(40.dp)
@@ -447,10 +566,7 @@ fun Table2(docViewModel: DocViewModel,context: Context){
                     Checkbox(
                         checked = sotrudnik.mark,
                         onCheckedChange = {
-                            if(!sotrudnik.mark)
-                                docViewModel.changeMark(false,sotrudnik.id!!,if(docViewModel.docState2.selectedVenueId!=null){docViewModel.docState2.selectedVenueId!!}else{0})
-                            else
-                                docViewModel.changeMark(true,sotrudnik.id!!,0)
+
                         },
                         modifier = Modifier
                             .weight(1f)
@@ -465,22 +581,21 @@ fun Table2(docViewModel: DocViewModel,context: Context){
             modifier = Modifier.fillMaxWidth()
         )
         {
-            Button(onClick = {
+            CustomButton(onClick = {
                 showDialog = true
                 f = true
-            }) {
-                Text(text = "Очистить")
-            }
-            Button(
+            },
+                title = "Очистить",
+                buttonType = ButtonTypes.Negative)
+            CustomButton(
                 onClick = {
                     showDialog = true
                     f = false
                 },
                 modifier = Modifier
-                    .padding(start = 10.dp)
-            ) {
-                Text(text = "Сформировать")
-            }
+                    .padding(start = 10.dp),
+                title="Сформировать"
+            )
         }
     }
 }
@@ -495,23 +610,22 @@ fun ConfirmationDialog(
         onDismissRequest = { onDismiss() },
         title = { Text(text) },
         confirmButton = {
-            Button(
+            CustomButton(
                 onClick = {
                     onConfirm()
                     onDismiss()
-                }
-            ) {
-                Text("Да")
-            }
+                },
+                title = "Да"
+            )
         },
         dismissButton = {
-            Button(
+            CustomButton(
                 onClick = {
                     onDismiss()
-                }
-            ) {
-                Text("Нет")
-            }
+                },
+                title = "Нет",
+                buttonType = ButtonTypes.Negative
+            )
         }
     )
 }
@@ -525,7 +639,7 @@ fun SearchField(docViewModel: DocViewModel){
             docViewModel.search(newText)
             searchQuery = newText
         },
-        placeholder = { Text(text = "поиск") },
+        placeholder = { Text(text = "Поиск по ФИО") },
         modifier = Modifier
             .fillMaxWidth(0.3f)
     )
