@@ -63,6 +63,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uchet.AdminPasswordManager
 import com.example.uchet.activity.AuthActivity
 import com.example.uchet.activity.MainActivity
+import com.example.uchet.entities.Acc
 import com.example.uchet.viewModels.SettingViewModel
 import com.example.uchet.viewModels.reportViewModel
 import kotlinx.coroutines.flow.collectLatest
@@ -216,10 +217,80 @@ fun PasswordDialog(
                     if(password == adminPass){
                         onConfirm()
                     }else{
-                        error = "Введен не верный пароль"
+                        error = "Введен неверный пароль"
                     }
                 },
                 title = "ОK"
+            )
+        },
+        dismissButton = {
+            CustomButton(
+                onClick = {
+                    onDismiss()
+                },
+                title = "Отмена"
+            )
+        }
+    )
+}
+
+@Composable
+fun AccDialog(
+    onDismiss: () -> Unit,
+    settingViewModel: SettingViewModel
+) {
+    var login by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var uid by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = { },
+        title = {
+            Column {
+                TextField(
+                    value = login,
+                    onValueChange = {
+                        login = it
+                    },
+                    label = { Text("Логин") },
+                    isError = error != "",
+                    modifier = Modifier
+                        .fillMaxWidth(0.7f)
+                        .padding(end = 6.dp)
+                )
+                TextField(
+                    value = password,
+                    onValueChange = {
+                        password = it
+                    },
+                    label = { Text("Пароль") },
+                    isError = error != "",
+                    modifier = Modifier
+                        .fillMaxWidth(0.7f)
+                        .padding(end = 6.dp)
+                )
+                TextField(
+                    value = uid,
+                    onValueChange = {
+                        uid = it
+                    },
+                    label = { Text("Пропуск") },
+                    isError = error != "",
+                    modifier = Modifier
+                        .fillMaxWidth(0.7f)
+                        .padding(end = 6.dp)
+                )
+                if(error != "")
+                    Text(error, color = Color.Red)
+            }
+        },
+        confirmButton = {
+            CustomButton(
+                onClick = {
+                    settingViewModel.insertAcc(Acc(login,password,uid))
+                    onDismiss()
+                },
+                title = "Добавить"
             )
         },
         dismissButton = {
@@ -252,6 +323,7 @@ fun AdminSetting(adminPasswordManager: AdminPasswordManager, settingViewModel: S
     val coroutineScope = rememberCoroutineScope()
     val scaffoldState = rememberScaffoldState()
     val accState = settingViewModel.AccState
+    var showDialog by remember { mutableStateOf(false) }
     LaunchedEffect(key1 = true) {
         adminPasswordManager.getAdminPass.collectLatest {
             adminPass.value = it
@@ -320,7 +392,7 @@ fun AdminSetting(adminPasswordManager: AdminPasswordManager, settingViewModel: S
                         .fillMaxHeight()
                         .weight(1f)
                         .clickable {
-
+                            showDialog = true
                         }
                 ) {
                     Text(text = "+",
@@ -369,7 +441,7 @@ fun AdminSetting(adminPasswordManager: AdminPasswordManager, settingViewModel: S
                                     .fillMaxHeight()
                                     .weight(1f)
                                     .clickable {
-
+                                        settingViewModel.delAcc(account)
                                     }
                             ) {
                                 Text(text = "-",
@@ -383,6 +455,9 @@ fun AdminSetting(adminPasswordManager: AdminPasswordManager, settingViewModel: S
                 }
             }
         }
+    }
+    if(showDialog){
+        AccDialog(onDismiss = { showDialog=false }, settingViewModel = SettingViewModel())
     }
 }
 

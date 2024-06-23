@@ -16,5 +16,6 @@ data class SotrWithDate(
     val patronymic: String,
     val uid: Long,
     val date: Date,
-    val destination: String
+    val destination: String,
+    val company: String
 )

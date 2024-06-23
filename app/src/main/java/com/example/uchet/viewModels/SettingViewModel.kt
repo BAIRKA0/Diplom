@@ -9,13 +9,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.uchet.Graph
 import com.example.uchet.Repository
 import com.example.uchet.entities.Acc
-import com.example.uchet.entities.Departure
 import com.example.uchet.entities.Document
 import com.example.uchet.entities.SotrudnikiInDocument
-import com.example.uchet.entities.Transport
 import com.example.uchet.network.PersonsFetcher
 import com.example.uchet.network.asModel
-import io.github.aakira.napier.Napier
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -68,6 +65,16 @@ class SettingViewModel(
     init {
         getAcc()
     }
+    fun delAcc(acc: Acc){
+        viewModelScope.launch {
+            repository.delAcc(acc)
+        }
+    }
+    fun insertAcc(acc: Acc){
+        viewModelScope.launch {
+            repository.insertAcc(acc)
+        }
+    }
     fun getAcc(){
         viewModelScope.launch {
             repository.readAllAcc.collectLatest { accs ->
@@ -90,8 +97,7 @@ class SettingViewModel(
 
                 while (true) {
                     if (deviceId.isEmpty()) {
-                        toastMsg = "ВЖК не установлен"
-                        Log.d("DEBUG", "VZHK ")
+                        Log.d("DEBUG", "ВЖК не установлен")
                         return@launch
                     }
                     var isFirstFetch = false
@@ -106,6 +112,7 @@ class SettingViewModel(
                     if (newData.passes.isEmpty()) {
                         updated = true
                         toastMsg = "Данные уже актуальны"
+                        Log.d("API","Данные уже актуальны")
                         return@launch
                     }
                     Graph.repository.insertSotrudniks(newData.passes.mapNotNull { it.asModel() })
@@ -116,7 +123,8 @@ class SettingViewModel(
                     )
                     if (newData.isFullySynchronized) {
                         updated = true
-                        Napier.e("launch finish")
+                        Log.d("API","launch finish")
+
                         hideDownload()
                         return@launch
                     }
@@ -129,27 +137,29 @@ class SettingViewModel(
 
     fun updateDoc(){
         viewModelScope.launch {
-            repository.insertDeparture(Departure(name = "Точка "))
-            repository.insertDeparture(Departure(name = "Точка "))
-            repository.insertDeparture(Departure(name = "Точка "))
-            repository.insertDeparture(Departure(name = "Точка "))
-            repository.insertDeparture(Departure(name = "Точка "))
-            repository.insertDeparture(Departure(name = "Точка "))
-            repository.insertDeparture(Departure(name = "Точка "))
-            repository.insertDeparture(Departure(name = "Точка "))
-            repository.insertDeparture(Departure(name = "Точка "))
-            repository.insertDeparture(Departure(name = "Точка "))
-
-            repository.insertTransport(Transport(name = "Автобус с343сс"))
-            repository.insertTransport(Transport(name = "Автобус а123бв"))
-            repository.insertTransport(Transport(name = "Автобус м567мм"))
-            repository.insertTransport(Transport(name = "Автобус к567ун"))
-            repository.insertTransport(Transport(name = "Автобус д345тп"))
-            repository.insertTransport(Transport(name = "Автобус о039оо"))
-            repository.insertTransport(Transport(name = "Автобус т999тт"))
-            repository.insertTransport(Transport(name = "Автобус у435сс"))
-            repository.insertTransport(Transport(name = "Автобус л234ох"))
-            repository.insertTransport(Transport(name = "Автобус т930пр"))
+//            repository.deleteAllDeparture()
+//            repository.deleteAllTransport()
+//            repository.insertDeparture(Departure(name = "Усть-Кут"))
+//            repository.insertDeparture(Departure(name = "Западно-Ярактинский участок"))
+//            repository.insertDeparture(Departure(name = "Большетирский участок"))
+//            repository.insertDeparture(Departure(name = "Марковское месторождение"))
+//            repository.insertDeparture(Departure(name = "Верхнетирский участок"))
+//            repository.insertDeparture(Departure(name = "Аянский участок"))
+//            repository.insertDeparture(Departure(name = "Ярактинское месторождение"))
+//            repository.insertDeparture(Departure(name = "Кайский участок"))
+//            repository.insertDeparture(Departure(name = "Аянский (Западный) участок"))
+//            repository.insertDeparture(Departure(name = "Иркутск"))
+//
+//            repository.insertTransport(Transport(name = "Автобус с343сс"))
+//            repository.insertTransport(Transport(name = "Автобус а123бв"))
+//            repository.insertTransport(Transport(name = "Автобус м567мм"))
+//            repository.insertTransport(Transport(name = "Автобус к567ун"))
+//            repository.insertTransport(Transport(name = "Автобус д345тп"))
+//            repository.insertTransport(Transport(name = "Автобус о039оо"))
+//            repository.insertTransport(Transport(name = "Автобус т999тт"))
+//            repository.insertTransport(Transport(name = "Автобус у435сс"))
+//            repository.insertTransport(Transport(name = "Автобус л234ох"))
+//            repository.insertTransport(Transport(name = "Автобус т930пр"))
 
             repository.deleteAllDocument()
             repository.deleteAllSotrInDoc()
@@ -164,14 +174,15 @@ class SettingViewModel(
                 )
             )
             for (i in 1..30) {
-                val venues = intArrayOf(Random().nextInt(10),Random().nextInt(10),Random().nextInt(10))
+                val venues = intArrayOf(Random().nextInt(9)+1,Random().nextInt(9)+1,Random().nextInt(9)+1)
+                Log.d("doc",venues.toString())
                 repository.insertDocument(
                     Document(
                         id = i,
                         distribution = "Распределение " + i,
                         departure_date = Date(2024-1900,5,Random().nextInt(30)),
-                        id_transport = Random().nextInt(10)+1,
-                        id_destination = Random().nextInt(10)+1,
+                        id_transport = Random().nextInt(9)+1,
+                        id_destination = Random().nextInt(9)+1,
                         id_venues = venues[0].toString()+","+venues[1].toString()+","+venues[2].toString()
                     )
                 )
@@ -194,6 +205,8 @@ class SettingViewModel(
         }
     }
 }
+
+
 
 data class AccState(
     val acc:List<Acc> = emptyList()

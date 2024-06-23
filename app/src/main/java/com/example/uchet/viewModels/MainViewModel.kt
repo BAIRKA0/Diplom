@@ -12,6 +12,8 @@ import com.example.uchet.entities.DocWithFields
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Locale
 
@@ -76,8 +78,10 @@ class MainViewModel(
                         destination = repository.getDeparture(document.id_destination)
                     )
                 }
+                val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+                val sortedDocs = docWithFieldsList.sortedBy { LocalDate.parse(it.departure_date, dateFormatter) }
                 docState = docState.copy(
-                    docs = docWithFieldsList
+                    docs = sortedDocs
                 )
                 docViewState = docViewState.copy(
                     docs = docState.docs

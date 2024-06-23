@@ -261,7 +261,7 @@ fun DocInfo(docViewModel: DocViewModel){
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ){
-                    Text(text = selectedItem)
+                    Text(text = selectedItem, maxLines = 1)
                     Icon(icon, "")
                 }
                 DropdownMenu(
@@ -296,7 +296,7 @@ fun DocInfo(docViewModel: DocViewModel){
             }else{
                 Icons.Filled.KeyboardArrowDown
             }
-            if(docViewModel.docState2.id!=0) {
+            if(docViewModel.docState2.id==0) {
                 Column {
                     Row(
                         modifier = Modifier
@@ -546,13 +546,17 @@ fun Table2(docViewModel: DocViewModel,context: Context){
                                 docViewModel.getInfo(sotrudnik.uid)
                             }
                     )
-                    var venue = if(sotrudnik.id_venue_fact==0){
-                        sotrudnik.id_venue_in_doc.toString()
-                    }else{
-                        sotrudnik.id_venue_in_doc.toString() + " / " + sotrudnik.id_venue_fact.toString()
+                    var venue = if(sotrudnik.id_venue_fact == 0) {
+                        docViewModel.getDepById(sotrudnik.id_venue_in_doc)
+                    } else {
+                        if(sotrudnik.available_in_doc) {
+                            docViewModel.getDepById(sotrudnik.id_venue_in_doc) + " / " + docViewModel.getDepById(sotrudnik.id_venue_fact)
+                        }else{
+                            docViewModel.getDepById(sotrudnik.id_venue_fact)
+                        }
                     }
                     Cell(
-                        text = venue, modifier = Modifier
+                        text = venue!!, modifier = Modifier
                             .weight(2f)
                             .border(1.dp, Color.Black)
                             .height(40.dp)

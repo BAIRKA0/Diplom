@@ -82,6 +82,7 @@ class Repository(
     fun readAllSotrInDoc(id:Int) = sotrInDocDao.getById(id)
 
     fun readTest(id: Int) = sotrInDocDao.getAllSotrInDoc(id)
+    fun readTest2(id: Int) = sotrInDocDao.getAllSotrInDocToOtchet(id)
     suspend fun insertSotrInDoc(sotrudnikiInDocument: SotrudnikiInDocument) {
         sotrInDocDao.insert(sotrudnikiInDocument)
     }
@@ -118,8 +119,8 @@ class Repository(
     suspend fun insertDeparture(departure: Departure) {
         departureDao.insert(departure)
     }
-    suspend fun deleteAllDeparture(departure: Departure) {
-        departureDao.delete(departure)
+    suspend fun deleteAllDeparture() {
+        departureDao.deleteAll()
     }
     suspend fun getDepartureRow():Int{
         return departureDao.getRowCount()
@@ -133,8 +134,8 @@ class Repository(
     suspend fun insertTransport(transport: Transport) {
         transportDao.insert(transport)
     }
-    suspend fun deleteAllTransport(transport: Transport) {
-        transportDao.delete(transport)
+    suspend fun deleteAllTransport() {
+        transportDao.deleteAll()
     }
     suspend fun getTransportRow():Int{
         return transportDao.getRowCount()
@@ -157,4 +158,7 @@ class Repository(
         return accDao.getAccByPass(uid)
     }
     val readAllAcc = accDao.getAllAccount()
+    suspend fun delAcc(acc: Acc){
+        return accDao.deleteAccount(acc)
+    }
 }

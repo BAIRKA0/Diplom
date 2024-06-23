@@ -24,6 +24,7 @@ interface SotrInDocDao {
             "sotrudniki.name, "+
             "sotrudniki.surname, "+
             "sotrudniki.patronymic, "+
+            "sotrudniki.company,"+
             "sotrudniki.uid"+
             " FROM sotrudniki_in_document" +
             " INNER JOIN sotrudniki" +
@@ -33,6 +34,9 @@ interface SotrInDocDao {
 
     @Query("SELECT * FROM sotrudniki_in_document INNER JOIN sotrudniki ON sotrudniki_in_document.id_sotrudnik = sotrudniki.id WHERE sotrudniki_in_document.id_doc = :id_doc")
     fun getAllSotrInDoc(id_doc: Int): Flow<List<SotrudnikiWithDocFields>>
+
+    @Query("SELECT * FROM sotrudniki_in_document INNER JOIN sotrudniki ON sotrudniki_in_document.id_sotrudnik = sotrudniki.id WHERE sotrudniki_in_document.id_doc = :id_doc AND sotrudniki_in_document.mark = 1")
+    fun getAllSotrInDocToOtchet(id_doc: Int): Flow<List<SotrudnikiWithDocFields>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(sotrudnikiInDocument: SotrudnikiInDocument)

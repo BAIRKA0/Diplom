@@ -50,7 +50,16 @@ class DocViewModel(
         private set
     var searchList by mutableStateOf(SotrList())
         private set
-
+    var d by mutableStateOf(DepState())
+        private set
+    init {
+        viewModelScope.launch {
+            d = d.copy(repository.readAllDeparture())
+        }
+    }
+    fun getDepById(id: Int): String? {
+        return d.dep.find { it.id == id }?.name
+    }
     fun getAllSotr(){
         viewModelScope.launch {
             repository.readAllSotrudnik.collect { sotr ->
@@ -123,6 +132,7 @@ class DocViewModel(
                             surname = sotrudnik.surname,
                             patronymic = sotrudnik.patronymic,
                             available_in_doc = sotrudnik.available_in_doc,
+                            company = sotrudnik.company,
                             uid = sotrudnik.uid
                         )
                     }
@@ -241,6 +251,10 @@ class DocViewModel(
         }
     }
 
+    suspend fun getDeparture(id: Int){
+        repository.getDeparture(id)
+    }
+
     fun updateVenue(id: Int){
         docState2 = docState2.copy(
             selectedVenueId = id
@@ -248,55 +262,81 @@ class DocViewModel(
     }
 
     fun save(context: Context){
-        val sotrudnikiList = sotrudnikiState.sotrudniki.filter { employee ->
-            employee.mark==true
-        }
-        val workBook = XSSFWorkbook()
-        val sheet = workBook.createSheet("Посаженные сотрудники")
-        val info = arrayOf(
-            "Пункт назначения", "Дата выезда","Транспорт"
-        )
-        val infoRow: Row = sheet.createRow(0)
-        for ((index, i) in info.withIndex()) {
-            val cell: Cell = infoRow.createCell(index)
-            cell.setCellValue(i)
-        }
-        val value = arrayOf(
-            docState2.destination[0].name, SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(docState2.departure_date),docState2.transport[0].name
-        )
-        val valueRow: Row = sheet.createRow(1)
-        for ((index, i) in value.withIndex()) {
-            val cell: Cell = valueRow.createCell(index)
-            cell.setCellValue(i)
-        }
-        val headers = arrayOf(
-             "Имя", "Фамилия", "Отчество", "Номер пропуска", "Компания", "Пункт выезда", "Рейс"
-        )
-        val headerRow: Row = sheet.createRow(2)
-        for ((index, i) in headers.withIndex()) {
-            val cell: Cell = headerRow.createCell(index)
-            cell.setCellValue(i)
-        }
-        for ((rowIndex, sotrudnik) in sotrudnikiList.withIndex()) {
-            val row: Row = sheet.createRow(rowIndex + 3)
-            row.createCell(0).setCellValue(sotrudnik.name)
-            row.createCell(1).setCellValue(sotrudnik.surname)
-            row.createCell(2).setCellValue(sotrudnik.patronymic)
-            row.createCell(3).setCellValue(sotrudnik.uid.toDouble())
-            row.createCell(4).setCellValue(sotrudnik.id_venue_fact.toDouble())
-            row.createCell(5).setCellValue(sotrudnik.route)
-        }
-        val values = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, "Отчет за " + SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(docState2.departure_date))
-            put(MediaStore.MediaColumns.MIME_TYPE, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-        }
-        val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-        uri?.let { outputStream ->
-            context.contentResolver.openOutputStream(outputStream).use { fileOutputStream ->
-                workBook.write(fileOutputStream)
+        viewModelScope.launch {
+            val sotrudnikiList = sotrudnikiState.sotrudniki.filter { employee ->
+                employee.mark == true
             }
-            workBook.close()
+            val dep:List<Departure> = repository.readAllDeparture()
+            val workBook = XSSFWorkbook()
+            val sheet = workBook.createSheet("Посаженные сотрудники")
+            val info = arrayOf(
+                "Пункт назначения", "Дата выезда", "Транспорт"
+            )
+            val infoRow: Row = sheet.createRow(0)
+            for ((index, i) in info.withIndex()) {
+                val cell: Cell = infoRow.createCell(index)
+                cell.setCellValue(i)
+            }
+            val value = arrayOf(
+                docState2.destination[0].name,
+                SimpleDateFormat(
+                    "dd.MM.yyyy",
+                    Locale.getDefault()
+                ).format(docState2.departure_date),
+                docState2.transport[0].name
+            )
+            val valueRow: Row = sheet.createRow(1)
+            for ((index, i) in value.withIndex()) {
+                val cell: Cell = valueRow.createCell(index)
+                cell.setCellValue(i)
+            }
+            val headers = arrayOf(
+                "Имя",
+                "Фамилия",
+                "Отчество",
+                "Номер пропуска",
+                "Компания",
+                "Пункт выезда по документу",
+                "Фактический пункт выезда",
+                "Рейс"
+            )
+            val headerRow: Row = sheet.createRow(2)
+            for ((index, i) in headers.withIndex()) {
+                val cell: Cell = headerRow.createCell(index)
+                cell.setCellValue(i)
+            }
+            for ((rowIndex, sotrudnik) in sotrudnikiList.withIndex()) {
+                val row: Row = sheet.createRow(rowIndex + 3)
+                row.createCell(0).setCellValue(sotrudnik.name)
+                row.createCell(1).setCellValue(sotrudnik.surname)
+                row.createCell(2).setCellValue(sotrudnik.patronymic)
+                row.createCell(3).setCellValue(sotrudnik.uid.toDouble())
+                row.createCell(4).setCellValue(sotrudnik.company)
+                row.createCell(5).setCellValue(dep.find{ it.id == sotrudnik.id_venue_in_doc}?.name )
+                row.createCell(6).setCellValue(dep.find{ it.id == sotrudnik.id_venue_fact}?.name)
+                row.createCell(7).setCellValue(sotrudnik.route)
+            }
+            val values = ContentValues().apply {
+                put(
+                    MediaStore.MediaColumns.DISPLAY_NAME,
+                    "Отчет за " + SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(
+                        docState2.departure_date
+                    )
+                )
+                put(
+                    MediaStore.MediaColumns.MIME_TYPE,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            }
+            val uri =
+                context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            uri?.let { outputStream ->
+                context.contentResolver.openOutputStream(outputStream).use { fileOutputStream ->
+                    workBook.write(fileOutputStream)
+                }
+                workBook.close()
+            }
         }
     }
 }
@@ -342,3 +382,8 @@ data class SotrList(
     val sotrList: List<Sotrudnik> = emptyList(),
     val search: String?=null
 )
+
+data class DepState(
+    val dep: List<Departure> = emptyList()
+)
+
